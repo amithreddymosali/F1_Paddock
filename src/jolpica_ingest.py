@@ -52,9 +52,7 @@ def fetch_circuits():
 
 
 def fetch_results(season=2024):
-    import requests
-    import pandas as pd
-
+   
     # First, fetch the season schedule to get all rounds
     schedule_url = f"https://api.jolpi.ca/ergast/f1/{season}.json"
     schedule_resp = requests.get(schedule_url)
@@ -66,10 +64,29 @@ def fetch_results(season=2024):
 
     all_results = []
 
-def fetch_qualifying_results(season=2024):
-    import requests
-    import pandas as pd
+    # Loop through each race round to fetch results for that round
+    for race in races:
+        round_num = race["round"]
+        results_url = f"https://api.jolpi.ca/ergast/f1/{season}/{round_num}/results.json"
+        results_resp = requests.get(results_url)
+        if results_resp.status_code != 200:
+            print(f"Warning: Failed to fetch results for round {round_num}")
+            continue
 
+        results_data = results_resp.json()
+        try:
+            race_results = results_data["MRData"]["RaceTable"]["Races"][0].get("Results", [])
+            for res in race_results:
+                res["race_round"] = round_num
+                all_results.append(res)
+        except (IndexError, KeyError):
+            continue
+
+    df = pd.json_normalize(all_results)
+    return df
+
+def fetch_qualifying_results(season=2024):
+  
     schedule_url = f"https://api.jolpi.ca/ergast/f1/{season}.json"
     schedule_resp = requests.get(schedule_url)
     if schedule_resp.status_code != 200:
@@ -102,37 +119,6 @@ def fetch_qualifying_results(season=2024):
     return df
 
 
-    # Loop through each race round to fetch results for that round
-    for race in races:
-        round_num = race["round"]
-        results_url = f"https://api.jolpi.ca/ergast/f1/{season}/{round_num}/results.json"
-        results_resp = requests.get(results_url)
-        if results_resp.status_code != 200:
-            print(f"Warning: Failed to fetch results for round {round_num}")
-            continue
-
-        results_data = results_resp.json()
-        race_results = results_data["MRData"]["RaceTable"]["Races"][0].get("Results", [])
-        for res in race_results:
-            res["race_round"] = round_num
-            all_results.append(res)
-
-    df = pd.json_normalize(all_results)
-    return df
-
-
-
-
-
-    if response.status_code != 200:
-        raise Exception(f"Failed to fetch data: {response.status_code}")
-
-    data = response.json()
-    races = data["MRData"]["RaceTable"]["Races"]
-
-    # Convert to DataFrame
-    df = pd.json_normalize(races)
-    return df
 
 
 if __name__ == "__main__":
